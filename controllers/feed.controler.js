@@ -142,12 +142,7 @@ exports.editPost = async(req, res, next) => {
         next(err)
     }
 }
-/**
- * 
- * @param {import('express').Request} req 
- * @param {import('express').Response} res 
- * @param {import('express').NextFunction} next 
- */
+
 exports.deletePost = async(req, res, next) => {
     const {postId} = req.params
     const userId = req.userId
