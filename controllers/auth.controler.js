@@ -4,7 +4,6 @@ const jwt = require("jsonwebtoken")
 const CustomError = require("../middlewares/custom-error")
 const User = require("../models/user.model.js")
 
-
 exports.signup = async(req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -33,12 +32,7 @@ exports.signup = async(req, res, next) => {
         next(err)
     }
 }
-/**
- * 
- * @param {import('express').Request} req 
- * @param {import('express').Response} res 
- * @param {import('express').NextFunction} next 
- */
+
 exports.login = async (req, res, next) => {
     const {email, password} = req.body
     try {

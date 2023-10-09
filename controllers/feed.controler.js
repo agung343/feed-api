@@ -2,6 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const { validationResult } = require("express-validator")
 const Post = require("../models/post.model.js")
+const User = require("../models/user.model.js")
 const CustomError = require("../middlewares/custom-error.js")
 
 exports.getPosts = async (req,res,next) => {
@@ -42,22 +43,30 @@ exports.createPost = async(req, res, next) => {
 
     const {title, content} = req.body
     const imageUrl = req.file.filename
+    const userId = req.userId
 
     try {
         const newPost = new Post({
             title: title,
             content: content,
             imageUrl: imageUrl,
-            creator: {
-                name: "Agung"
-            }
+            creator: userId
         })
 
         const post = await newPost.save()
 
+        const user = await User.findById(userId)
+        if (user) {
+            user.posts.push(post._id)
+            await user.save()
+        }
+
         res.status(201).json({
             message: "created new post",
-            post: post
+            post: post,
+            creator: {
+                _id: user._id
+            }
         })
     } catch (err) {
         if(err.statusCode) {
@@ -90,6 +99,7 @@ exports.getSinglePost = async(req, res, next) => {
 
 exports.editPost = async(req, res, next) => {
     const {postId} = req.params
+    const userId = req.userId;
 
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -108,6 +118,10 @@ exports.editPost = async(req, res, next) => {
         if (!post) {
            throw new CustomError("Could not the post", 404)
         }
+        if (post.creator.toString() !== userId) {
+            throw new CustomError("Access denied", 403)
+        }
+        
         if (imageUrl !== post.imageUrl) {
             clearImage(post.imageUrl)
         }
@@ -136,16 +150,26 @@ exports.editPost = async(req, res, next) => {
  */
 exports.deletePost = async(req, res, next) => {
     const {postId} = req.params
+    const userId = req.userId
     try {
         const post = await Post.findById(postId)
         if (!post) {
             throw new CustomError("Could not the post", 404)
-        } else {
-            clearImage(post.imageUrl)
+        } 
+        if (post.creator.toString() !==  userId) {
+            throw new CustomError("Access denied", 403)
         }
+            
         const deleted = await Post.findByIdAndDelete(postId)
-        console.log(deleted)
+        clearImage(post.imageUrl)
 
+        // clear relation
+        const user = await User.updateOne({ _id: userId}, {
+            $pull: {
+                posts: deleted._id
+            }
+        })
+        
         res.status(200).json({
             message: "post has been delete"
         })
@@ -155,7 +179,6 @@ exports.deletePost = async(req, res, next) => {
         }
         next(err)
     }
-   
 }
 
 
